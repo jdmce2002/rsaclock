@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSA Clock - Modular Inverse</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .input-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        input {
+            width: 3em;
+            text-align: center;
+            font-size: 1em;
+        }
+        button {
+            padding: 5px 10px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+        #modularContainer {
+            position: relative;
+            width: 500px;
+            height: 500px;
+            margin: 20px auto;
+            border: 2px dashed black;
+            border-radius: 50%;
+        }
+        .modularNumber {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            text-align: center;
+            line-height: 35px;
+            border-radius: 50%;
+            background-color: white;
+            border: 1px solid #333;
+            font-size: 1.2em;
+            font-weight: bold;
+            transform: translate(-50%, -50%);
+        }
+        .coprime {
+            background-color: green;
+            color: white;
+        }
+        .inverse {
+            background-color: blue !important;
+        }
+        #hand {
+            position: absolute;
+            width: 5px;
+            height: 150px;
+            background-color: red;
+            top: 50%;
+            left: 50%;
+            transform-origin: bottom center;
+            transform: translate(-50%, -100%) rotate(0deg);
+            transition: transform 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+    <h1>RSA Clock - Modular Inverse</h1>
+
+    <div class="input-container">
+        <label for="prime1">Prime 1:</label>
+        <input type="number" id="prime1" min="2" required>
+        <label for="prime2">Prime 2:</label>
+        <input type="number" id="prime2" min="2" required>
+        <button onclick="generateModularStructure()">Create Clock</button>
+    </div>
+
+    <div id="modularContainer">
+        <div id="hand"></div>
+    </div>
+
+    <div class="input-container">
+        <label for="stepSize">Step Size (e):</label>
+        <input type="number" id="stepSize" min="1">
+        <button onclick="moveHand()">Advance</button>
+    </div>
+
+    <p id="clickCount">Clicks: 0</p>
+    <p id="modInverse"></p>
+
+    <script>
+        let n, phiN, d;
+        let coprimeKeys = new Set();
+        let numberAngles = {};
+        let currentNumber = 1;
+        let clickCount = 0;
+
+        function generateModularStructure() {
+            const prime1 = parseInt(document.getElementById("prime1").value);
+            const prime2 = parseInt(document.getElementById("prime2").value);
+
+            if (!isPrime(prime1) || !isPrime(prime2)) {
+                alert("Please enter two valid prime numbers.");
+                return;
+            }
+
+            n = prime1 * prime2;
+            phiN = (prime1 - 1) * (prime2 - 1);
+            coprimeKeys.clear();
+            currentNumber = 1;
+            clickCount = 0;
+            document.getElementById("clickCount").innerText = `Clicks: ${clickCount}`;
+            document.getElementById("modInverse").innerText = "";
+
+            generateCoprimeArray(phiN);
+            renderModularStructure(phiN);
+        }
+
+        function isPrime(num) {
+            if (num <= 1) return false;
+            for (let i = 2; i <= Math.sqrt(num); i++) {
+                if (num % i === 0) return false;
+            }
+            return true;
+        }
+
+        function gcd(a, b) {
+            while (b !== 0) {
+                [a, b] = [b, a % b];
+            }
+            return a;
+        }
+
+        function modInverse(e, phiN) {
+            let [a, b, x0, x1] = [e, phiN, 1, 0];
+            while (b !== 0) {
+                let q = Math.floor(a / b);
+                [a, b] = [b, a % b];
+                [x0, x1] = [x1, x0 - q * x1];
+            }
+            return x0 < 0 ? x0 + phiN : x0;
+        }
+
+        function generateCoprimeArray(phiN) {
+            coprimeKeys.clear();
+            for (let i = 1; i < phiN; i++) {
+                if (gcd(i, phiN) === 1) {
+                    coprimeKeys.add(i);
+                }
+            }
+        }
+
+        function renderModularStructure(phiN) {
+            const modularContainer = document.getElementById("modularContainer");
+            modularContainer.innerHTML = '<div id="hand"></div>';
+            const centerX = modularContainer.clientWidth / 2;
+            const centerY = modularContainer.clientHeight / 2;
+            const radius = (modularContainer.clientWidth / 2) - 40;
+            numberAngles = {};
+
+            for (let i = 1; i <= phiN; i++) {
+                const angle = ((i - 1) / phiN) * 360;
+                const x = centerX + radius * Math.sin(angle * Math.PI / 180);
+                const y = centerY - radius * Math.cos(angle * Math.PI / 180);
+                const numberDiv = document.createElement("div");
+                numberDiv.className = "modularNumber";
+                numberDiv.textContent = i;
+                if (coprimeKeys.has(i)) numberDiv.classList.add("coprime");
+                numberDiv.style.left = `${x}px`;
+                numberDiv.style.top = `${y}px`;
+                modularContainer.appendChild(numberDiv);
+                numberAngles[i] = angle;
+            }
+        }
+
+        function moveHand() {
+    const stepSize = parseInt(document.getElementById("stepSize").value);
+    if (isNaN(stepSize) || stepSize < 1) {
+        alert("Please enter a valid step size.");
+        return;
+    }
+
+    if (!phiN) {
+        alert("Please generate the clock first.");
+        return;
+    }
+
+    if (!coprimeKeys.has(stepSize)) {
+        alert("Step size must be coprime to φ(N)!");
+        return;
+    }
+
+    // Step-wise multiplication: Move hand with modular multiplication
+    currentNumber = (currentNumber * stepSize) % phiN;
+    clickCount++;
+    document.getElementById("clickCount").innerText = `Clicks: ${clickCount}`;
+    updateHandPosition();
+
+    // Check if we have returned to 1
+    if (currentNumber === 1) {
+        d = modInverse(stepSize, phiN); // Compute inverse ONLY when cycle completes
+        document.getElementById("modInverse").innerText = `Modular Inverse of ${stepSize} is: ${d}`;
+        alert(`🎉 Found the Modular Inverse! d = ${d} in ${clickCount} clicks.`);
+    }
+}
+
+        function updateHandPosition() {
+            const hand = document.getElementById("hand");
+            const angle = numberAngles[currentNumber] || 0;
+            hand.style.transform = `translate(-50%, -100%) rotate(${angle}deg)`;
+        }
+    </script>
+</body>
+</html>
