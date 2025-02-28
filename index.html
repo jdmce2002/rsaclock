@@ -113,28 +113,34 @@
         let numberAngles = {};
         
         function setStart() {
-            let startPosition = parseInt(document.getElementById("startPosition").value);
-            if (isNaN(startPosition) || startPosition < 1 || startPosition > 12) {
-                alert("Please enter a valid number between 1 and 12.");
-                return;
-            }
+    let userInput = parseInt(document.getElementById("startPosition").value);
 
-            currentNumber = startPosition;
-            stepSize = startPosition; // ✅ Store user's choice as a fixed step size
-            clickCount = 0;
-            visited.clear();
-            document.getElementById("clickCount").innerText = `Clicks: ${clickCount}`;
+    if (isNaN(userInput) || userInput <= 0) {
+        alert("Please enter a positive integer.");
+        return;
+    }
 
-            // Reset tracker display
-            for (let i = 1; i <= 12; i++) {
-                document.getElementById(`track${i}`).style.backgroundColor = "white";
-                document.getElementById(`track${i}`).style.color = "black";
-            }
+    // Convert input to mod 12 (so user can enter any number)
+    let startPosition = userInput % 12;
+    if (startPosition === 0) startPosition = 12; // Convert 0 to 12 for clarity
 
-            // Reset and move pointer
-            renderModularStructure();
-            updateHandPosition();
-        }
+    currentNumber = startPosition;
+    stepSize = startPosition; // ✅ Use mod 12 result as the step size
+    clickCount = 0;
+    visited.clear();
+    document.getElementById("clickCount").innerText = `Clicks: ${clickCount}`;
+
+    // Reset tracker display
+    for (let i = 1; i <= 12; i++) {
+        document.getElementById(`track${i}`).style.backgroundColor = "white";
+        document.getElementById(`track${i}`).style.color = "black";
+    }
+
+    // Reset and move pointer
+    renderModularStructure();
+    updateHandPosition();
+}
+
 
         function renderModularStructure() {
             const modularContainer = document.getElementById("modularContainer");
